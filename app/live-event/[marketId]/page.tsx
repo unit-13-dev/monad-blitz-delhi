@@ -317,33 +317,12 @@ export default function MarketDetailPage() {
   useEffect(() => {
     if (marketId !== null) {
       fetchRecentBets()
-      const interval = setInterval(() => {
-        fetchRecentBets()
-        fetchMarket()
-      }, 10000)
-      return () => clearInterval(interval)
     }
-  }, [marketId, fetchRecentBets, fetchMarket])
+  }, [marketId, fetchRecentBets])
 
   useEffect(() => {
     fetchLeaderboard()
-    const interval = setInterval(fetchLeaderboard, 30000)
-    return () => clearInterval(interval)
   }, [fetchLeaderboard])
-
-  useEffect(() => {
-    if (marketStatus && marketStatus.isBettingOpen) {
-      const interval = setInterval(() => {
-        if (readOnlyContract && marketId !== null) {
-          readOnlyContract.getMarketStatus(marketId).then((status) => {
-            setMarketStatus(status)
-            setTimeRemaining(formatTimeRemaining(status.secondsRemaining))
-          })
-        }
-      }, 1000)
-      return () => clearInterval(interval)
-    }
-  }, [marketStatus, readOnlyContract, marketId])
 
   const handlePlaceBet = async (prediction: boolean) => {
     if (!contract || !isConnected || marketId === null) {
@@ -635,12 +614,31 @@ export default function MarketDetailPage() {
                   </Card>
                 )}
 
+                {marketData.resolved && (
+                  <Card className={`border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 mb-4 ${
+                    marketData.outcome ? "bg-green-500" : "bg-red-500"
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-white" />
+                      <p className="font-black uppercase text-white text-lg">
+                        MARKET RESOLVED: {marketData.outcome ? "YES" : "NO"}
+                      </p>
+                    </div>
+                  </Card>
+                )}
+
                 {userBet?.hasBet && (
                   <Card className="border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 bg-yellow-300 mb-4">
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-5 w-5 text-black" />
                       <p className="font-black uppercase text-black">
                         You bet: {userBet.prediction ? "YES" : "NO"} - {formatEther(userBet.amount)} MON
+                        {marketData.resolved && userBet.won && (
+                          <span className="text-green-600 ml-2">✓ WON</span>
+                        )}
+                        {marketData.resolved && !userBet.won && (
+                          <span className="text-red-600 ml-2">✗ LOST</span>
+                        )}
                       </p>
                   </div>
                   </Card>
