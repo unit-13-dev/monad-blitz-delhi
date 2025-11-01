@@ -288,11 +288,6 @@ export default function AdminPage() {
       return
     }
 
-    if (!marketInfo.status.isBettingClosed) {
-      setResolveError("Market is not closed yet. Cannot resolve.")
-      return
-    }
-
     if (marketInfo.data.resolved) {
       setResolveError("Market is already resolved")
       return
@@ -783,9 +778,9 @@ export default function AdminPage() {
                       {marketInfo.data.resolved ? (
                         <span className="text-red-600">✓ Already Resolved ({marketInfo.data.outcome ? "YES" : "NO"})</span>
                       ) : marketInfo.status.isBettingClosed ? (
-                        <span className="text-orange-600">✓ Closed - Ready to Resolve</span>
+                        <span className="text-orange-600">✓ Closed</span>
                       ) : (
-                        <span className="text-yellow-600">⚠ Still Open</span>
+                        <span className="text-blue-600">ℹ Open - Admin Can Resolve</span>
                       )}
                     </div>
                     <div className="text-xs font-bold mt-2">
@@ -831,8 +826,7 @@ export default function AdminPage() {
                       manualResolving ||
                       !contract ||
                       manualOutcome === null ||
-                      marketInfo.data.resolved ||
-                      !marketInfo.status.isBettingClosed
+                      marketInfo.data.resolved
                     }
                     className="w-full bg-black text-white border-4 border-black hover:bg-white hover:text-black font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:opacity-50 disabled:cursor-not-allowed"
                   >

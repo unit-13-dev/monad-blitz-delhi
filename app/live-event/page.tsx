@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Clock, Users, ArrowRight, TrendingUp, Zap } from "lucide-react"
 import { useTachiContract } from "@/context/TachiContractProvider"
 import { useWalletUser } from "@/hooks/use-wallet-user"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { formatEther, formatTimeRemaining, MarketData } from "@/lib/tachi-contract"
 import { ethers } from "ethers"
 import Link from "next/link"
@@ -33,6 +33,7 @@ export default function LiveEventMarketplacePage() {
   const [markets, setMarkets] = useState<MarketListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [userBets, setUserBets] = useState<Record<number, { hasBet: boolean; prediction: boolean }>>({})
+  const previousMarketIdsRef = useRef<string>("")
 
   const fetchAllMarkets = useCallback(async () => {
     if (!readOnlyContract) return
@@ -83,46 +84,66 @@ export default function LiveEventMarketplacePage() {
     }
   }, [readOnlyContract])
 
-  const fetchUserBets = useCallback(async () => {
-    if (!readOnlyContract || !address || markets.length === 0) return
-
-    try {
-      const bets: Record<number, { hasBet: boolean; prediction: boolean }> = {}
-      
-      for (const market of markets) {
-        try {
-          const userBet = await readOnlyContract.getUserBet(market.id, address)
-          if (userBet.hasBet) {
-            bets[market.id] = {
-              hasBet: true,
-              prediction: userBet.prediction,
-            }
-          }
-        } catch (err) {
-          continue
-        }
-      }
-      
-      setUserBets(bets)
-    } catch (err) {
-      console.error("Error fetching user bets:", err)
-    }
-  }, [readOnlyContract, address, markets])
-
   useEffect(() => {
     fetchAllMarkets()
   }, [fetchAllMarkets])
 
   useEffect(() => {
-    fetchUserBets()
-  }, [fetchUserBets])
+    // Only fetch user bets if markets actually changed (by ID comparison) or address changed
+    if (markets.length > 0 && address && readOnlyContract) {
+      const marketIds = markets.map(m => m.id).sort().join(',')
+      const currentAddress = address.toLowerCase()
+      const previousKey = previousMarketIdsRef.current
+      
+      // Check if market IDs or address changed
+      const prevIds = previousKey.split(':')[0] || ""
+      const prevAddress = previousKey.split(':')[1] || ""
+      const keyChanged = marketIds !== prevIds || currentAddress !== prevAddress
+      
+      if (keyChanged) {
+        previousMarketIdsRef.current = `${marketIds}:${currentAddress}`
+        
+        // Fetch user bets inline to avoid dependency issues
+        const fetchBets = async () => {
+          try {
+            const bets: Record<number, { hasBet: boolean; prediction: boolean }> = {}
+            for (const market of markets) {
+              try {
+                const userBet = await readOnlyContract.getUserBet(market.id, address)
+                if (userBet.hasBet) {
+                  bets[market.id] = {
+                    hasBet: true,
+                    prediction: userBet.prediction,
+                  }
+                }
+              } catch (err) {
+                continue
+              }
+            }
+            setUserBets(bets)
+          } catch (err) {
+            console.error("Error fetching user bets:", err)
+          }
+        }
+        fetchBets()
+      }
+    } else if (!address) {
+      // Clear user bets if address is not available
+      setUserBets({})
+      previousMarketIdsRef.current = ""
+    }
+  }, [markets, address, readOnlyContract])
 
   useEffect(() => {
+    if (!readOnlyContract) return
+    
     const interval = setInterval(() => {
-      fetchAllMarkets()
+      if (readOnlyContract) {
+        fetchAllMarkets()
+      }
     }, 30000)
     return () => clearInterval(interval)
-  }, [fetchAllMarkets])
+  }, [readOnlyContract])
 
   if (contractLoading || loading) {
     return (
