@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  walletAddress String @unique
+  username  String   @unique
+  wins      Int      @default(0)
+  losses    Int      @default(0)
+  winRate   Float    @default(0)
+  monWon    String   @default("0")
+  nfts      Int      @default(0)
+  streak    Int      @default(0)
+  streakType String  @default("NONE")
+  balance   String   @default("0") // Wallet balance in wei (stored as string for large numbers)
+  balanceUpdatedAt DateTime? // Last time balance was updated
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([walletAddress])
+  @@index([username])
+  @@index([wins])
+  @@index([monWon])
+}
